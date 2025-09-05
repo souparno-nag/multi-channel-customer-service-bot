@@ -13,14 +13,15 @@ async function initializeVonage() {
   }
 
   let privateKey;
-  if (VONAGE_PRIVATE_KEY_ENV) {
-    privateKey = VONAGE_PRIVATE_KEY_ENV;
-  } else if (keyPath) {
+  // Prioritize file path as it has proper PEM format
+  if (keyPath) {
     try {
       privateKey = await fs.readFile(keyPath, 'utf8');
     } catch (error) {
       throw new Error(`Failed to read private key from path: ${keyPath}. Error: ${error.message}`);
     }
+  } else if (VONAGE_PRIVATE_KEY_ENV) {
+    privateKey = VONAGE_PRIVATE_KEY_ENV;
   } else {
     throw new Error('No Vonage private key provided. Set VONAGE_PRIVATE_KEY or VONAGE_APPLICATION_PRIVATE_KEY_PATH.');
   }

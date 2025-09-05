@@ -1,28 +1,20 @@
 const SMS_user = require("../models/sms_user");
 
 const addSMSUser = async (req, type) => {
-    const newSMSUser = {
-        phone: req.body.phone,
-        type: type,
-    }
-    const newlyCreatedSMSUser = await SMS_user.create(newSMSUser);
     try {
-        if (newSMSUser) {
-            res.status(201).json({
-                success: true,
-                message: "SMS User added successfully",
-                data: newlyCreatedSMSUser,
-            });
+        const newSMSUser = {
+            phone_number: req.body.from || req.body.phone,
+            type: type,
         }
+        const newlyCreatedSMSUser = await SMS_user.create(newSMSUser);
+        console.log('SMS User saved:', newlyCreatedSMSUser);
+        return newlyCreatedSMSUser;
     } catch (error) {
-        console.log(error);
-        res.status(500).json({
-        success: false,
-        message: "Something went wrong! Please try again",
-        });
+        console.log('Error saving SMS user:', error);
+        // Don't throw error, just log it since this is called from webhook
     }
 }
 
-module.exports = [
+module.exports = {
     addSMSUser
-]
+}

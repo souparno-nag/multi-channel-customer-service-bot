@@ -1,9 +1,12 @@
+require('dotenv').config();
+
 const express = require("express");
 const bodyParser = require('body-parser');
 const app = express();
 const connectToDB = require("./database/db");
-const addSMStoDB = require('./controller/SMS_controller');
-const addSMSUser = require('./controller/SMS_user_controller')
+const { addSMStoDB } = require('./controller/SMS_controller');
+const { addSMSUser } = require('./controller/SMS_user_controller');
+const sendMessage = require('./SMS/send-sms');
 
 const PORT = 3000;
 const DATA_FILE = 'webhook_data.json';
@@ -15,45 +18,68 @@ app.use(bodyParser.urlencoded({ extended: true }));
 // connect to database
 connectToDB();
 
-const saveWebhookPayload = (type, req) => {
-    // Read the existing data from the file. If the file doesn't exist,
-    // we'll start with an empty array.
-    // let data = [];
-    // try {
-    //     const fileContent = fs.readFileSync(DATA_FILE, 'utf8');
-    //     data = JSON.parse(fileContent);
-    // } catch (err) {
-    //     // Log a message if the file doesn't exist, but don't exit.
-    //     // We will create it on the first successful webhook receipt.
-    //     if (err.code === 'ENOENT') {
-    //         console.log(`- Data file '${DATA_FILE}' not found. A new file will be created.`);
-    //     } else {
-    //         console.error('Error reading data file:', err);
-    //     }
-    // }
+// Simple bot response logic
+const generateBotResponse = (incomingMessage) => {
+    const message = incomingMessage.toLowerCase().trim();
+    
+    // Basic keyword-based responses
+    if (message.includes('hello') || message.includes('hi') || message.includes('hey')) {
+        return "Hello! Welcome to our customer service. How can I help you today?";
+    } else if (message.includes('help') || message.includes('support')) {
+        return "I'm here to help! You can ask me about our services, hours, or general information. What would you like to know?";
+    } else if (message.includes('hours') || message.includes('time')) {
+        return "Our customer service is available 24/7. How can I assist you?";
+    } else if (message.includes('bye') || message.includes('goodbye') || message.includes('thanks')) {
+        return "Thank you for contacting us! Have a great day!";
+    } else if (message.includes('price') || message.includes('cost')) {
+        return "For pricing information, please visit our website or speak with one of our representatives. Is there anything specific you'd like to know?";
+    } else {
+        return "Thanks for your message! I understand you said: '" + incomingMessage + "'. Our team will get back to you soon. For immediate assistance, please call our support line.";
+    }
+};
 
-    // // Create an object to store the webhook data, including a timestamp.
-    // const newEntry = {
-    //     timestamp: new Date().toISOString(),
-    //     type: type,
-    //     payload: payload,
-    // };
-
-    // // Add the new entry to the data array.
-    // data.push(newEntry);
-
-    // // Write the entire updated array back to the file.
-    // // We use JSON.stringify to format the data with nice indentation (2 spaces).
-    // fs.writeFile(DATA_FILE, JSON.stringify(data, null, 2), 'utf8', (err) => {
-    //     if (err) {
-    //         console.error('Error writing to data file:', err);
-    //     } else {
-    //         console.log(`- Webhook payload successfully saved to ${DATA_FILE}.`);
-    //     }
-    // });
-    if (req.body.channel == 'SMS') {
-        addSMStoDB(req, type);
-        addSMSUser(req, type);
+const saveWebhookPayload = async (type, req) => {
+    try {
+        if (req.body.channel === 'sms' && type === 'inbound_message') {
+            // Save incoming SMS to database
+            await addSMStoDB(req, type);
+            await addSMSUser(req, type);
+            
+            // Generate and send automatic response
+            if (req.body.text) {
+                const responseText = generateBotResponse(req.body.text);
+                
+                // Send automatic response
+                try {
+                    const messageUUID = await sendMessage(
+                        responseText,
+                        req.body.from,  // Reply to sender
+                        req.body.to     // From the original recipient (our number)
+                    );
+                    
+                    console.log(`✅ Auto-response sent to ${req.body.from}: "${responseText}"`);
+                    console.log(`📧 Message UUID: ${messageUUID}`);
+                    
+                    // Optionally save the outbound response to database too
+                    const outboundReq = {
+                        body: {
+                            message_uuid: messageUUID,
+                            from: req.body.to,
+                            to: req.body.from,
+                            timestamp: new Date().toISOString(),
+                            text: responseText,
+                            channel: 'sms'
+                        }
+                    };
+                    await addSMStoDB(outboundReq, 'outbound_response');
+                    
+                } catch (sendError) {
+                    console.error('❌ Error sending SMS response:', sendError);
+                }
+            }
+        }
+    } catch (error) {
+        console.error('❌ Error processing webhook:', error);
     }
 };
 
@@ -77,6 +103,35 @@ app.post('/webhooks/message-status', (req, res) => {
     // Call our helper function to save the payload to the JSON file.
     saveWebhookPayload('message_status', req);
     res.status(200).send('OK');
+});
+
+// Manual SMS sending endpoint for testing
+app.post('/send-sms', async (req, res) => {
+    try {
+        const { text, to, from } = req.body;
+        
+        if (!text || !to) {
+            return res.status(400).json({
+                success: false,
+                message: 'Text and to number are required'
+            });
+        }
+        
+        const messageUUID = await sendMessage(text, to, from);
+        
+        res.status(200).json({
+            success: true,
+            message: 'SMS sent successfully',
+            messageUUID: messageUUID
+        });
+    } catch (error) {
+        console.error('Error sending manual SMS:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to send SMS',
+            error: error.message
+        });
+    }
 });
 
 // Start the server

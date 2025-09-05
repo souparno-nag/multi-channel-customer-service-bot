@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
 
-const SMSUserSchema = {
+const SMSUserSchema = new mongoose.Schema({
     phone_number : {
         type: String,
         required: true,
@@ -9,6 +9,6 @@ const SMSUserSchema = {
     type : {
         type : String,
     }
-};
+});
 
 module.exports = mongoose.model("SMS_user", SMSUserSchema);
