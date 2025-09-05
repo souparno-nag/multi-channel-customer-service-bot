@@ -1,0 +1,30 @@
+{
+  "name": "multi-channel-customer-service-bot",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/souparno-nag/multi-channel-customer-service-bot.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/souparno-nag/multi-channel-customer-service-bot/issues"
+  },
+  "homepage": "https://github.com/souparno-nag/multi-channel-customer-service-bot#readme",
+  "dependencies": {
+    "@stoplight/prism-cli": "^5.14.2",
+    "@vonage/cli": "^3.0.4",
+    "@vonage/messages": "^1.20.3",
+    "@vonage/server-sdk": "^3.24.1",
+    "body-parser": "^2.2.0",
+    "dotenv": "^17.2.2",
+    "express": "^5.1.0"
+  }
+}
