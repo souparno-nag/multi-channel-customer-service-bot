@@ -1,8 +1,4 @@
-# WARP.md
-
-This file provides guidance to WARP (warp.dev) when working with code in this repository.
-
-## Project Overview
+# Project Overview
 
 This is a multi-channel customer service bot that integrates SMS, WhatsApp, and Rasa chatbot capabilities using the Vonage Messages API. The system consists of a Node.js/Express backend with MongoDB for data persistence and a separate Rasa chatbot component.
 
